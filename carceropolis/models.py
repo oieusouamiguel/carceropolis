@@ -4,11 +4,16 @@ import csv
 import logging
 
 from cidades.models import Cidade, STATE_CHOICES
+from autoslug import AutoSlugField
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.utils.functional import lazy
 from mezzanine.blog.models import BlogPost
-from autoslug import AutoSlugField
-from .options import current_month, current_year, MONTH_CHOICES, YEAR_CHOICES
+
+from .options import (DESTINACAO_ORIGINAL, GESTAO_ESTABELECIMENTO,
+                      MONTH_CHOICES, S_N_NA, SEXO_DESTINACAO,
+                      TIPO_ESTABELECIMENTO, YEAR_CHOICES, current_month,
+                      current_year)
 from .validators import check_filetype
 
 log = logging.getLogger(__name__)
@@ -290,3 +295,131 @@ class BaseMJ(models.Model):
     class Meta:
         verbose_name = 'Base bruta MJ'
         verbose_name_plural = 'Bases brutas MJ'
+
+
+class GESTAO_ESTABELECIMENTO(models.Model):
+    """Tipo de modelo de gestão do estabelecimento."""
+    modelo_de_gestao = models.CharField('Modelo de Gestão', max_length=50)
+    descricao = models.CharField('Descrição', max_length=255)
+
+    class Meta:
+        verbose_name = 'Gestão do estabelecimento'
+
+
+class SERVICO_EXISTENTE(models.Model):
+    """Serviço existente na unidade prisional."""
+    servico = models.CharField('Serviço', max_length=50)
+    descricao = models.CharField('Descrição', max_length=255)
+
+    class Meta:
+        verbose_name = 'Serviço'
+        verbose_name_plural = 'Serviços existentes'
+
+
+class REGIMENTO_ESPECIFICO(models.Model):
+    """Opções para a pergunta 1.9 sobre regimento específico."""
+    opcao = models.CharField('Opção', max_length=50)
+    descricao = models.CharField('Descrição', max_length=255)
+
+    class Meta:
+        verbose_name = 'Serviço'
+        verbose_name_plural = 'Serviços existentes'
+
+
+class DadosInfopen(models.Model):
+    """Dados do infopen sobre as unidades prisionais."""
+    unidade = models.ForeignKey(UnidadePrisional, verbose_name='Unidade Prisional')
+    ano = models.IntegerField('Ano da informação',
+                              choices=YEAR_CHOICES, default=current_year)
+    #
+    destinacao = models.CharField(max_length=10, choices=SEXO_DESTINACAO,
+                                  verbose_name='Estabelecimento originalmente destinado a pessoa privada de liberdade do sexo')
+    #
+    # - 1.2. Tipo de estabelecimento - originalmente destinado (marcar apenas uma opção)
+    tipo = models.CharField(max_length=100,
+                            choices=TIPO_ESTABELECIMENTO,
+                            default=TIPO_ESTABELECIMENTO[0][0],
+                            verbose_name='Tipo de estabelecimento - originalmente destinado (marcar apenas uma opção)')
+    sub_tipo = models.CharField('Tipo de Estabelecimento', max_length=100,
+                                default=None)
+    # - 1.2.1. Tipo de estabelecimento
+    capacidade = models.IntegerField('Capacidade do Estabelecimento', default=0)
+    #
+    # - Pergunta 1.3 - Capacidade do estabelecimento
+    vagas_provisorios_masc = models.IntegerField('vagas (masc) - presos provisórios', null=True, blank=True)
+    vagas_fechado_masc = models.IntegerField('vagas (masc) - regime fechado', null=True, blank=True)
+    vagas_semiaberto_masc = models.IntegerField('vagas (masc) - regime semiaberto', null=True, blank=True)
+    vagas_aberto_masc = models.IntegerField('vagas (masc) - regime aberto', null=True, blank=True)
+    vagas_rdd_masc = models.IntegerField('vagas (masc) - Regime Disciplinar Diferenciado (RDD)', null=True, blank=True)
+    vagas_internacao_masc = models.IntegerField('vagas (masc) - Medidas de segurança de internação', null=True, blank=True)
+    vagas_outros_masc = models.IntegerField('vagas (masc) - outro(s). Qual(is)?', null=True, blank=True)
+    vagas_outros_descricao_masc = models.CharField('Quais outras vagas (masc)?', max_length=100, blank=True)
+    #
+    vagas_provisorios_fem = models.IntegerField('vagas (fem) - presos provisórios', null=True, blank=True)
+    vagas_fechado_fem = models.IntegerField('vagas (fem) - regime fechado', null=True, blank=True)
+    vagas_semiaberto_fem = models.IntegerField('vagas (fem) - regime semiaberto', null=True, blank=True)
+    vagas_aberto_fem = models.IntegerField('vagas (fem) - regime aberto', null=True, blank=True)
+    vagas_rdd_fem = models.IntegerField('vagas (fem) - Regime Disciplinar Diferenciado (RDD)', null=True, blank=True)
+    vagas_internacao_fem = models.IntegerField('vagas (fem) - Medidas de segurança de internação', null=True, blank=True)
+    vagas_outros_fem = models.IntegerField('vagas (fem) - outro(s)', null=True, blank=True)
+    vagas_outros_descricao_fem = models.CharField('Quais outras vagas? (fem)', max_length=100, blank=True)
+    #
+    celas_nao_aptas = models.IntegerField('Quantidade de celas não aptas', null=True, blank=True)
+    vagas_desativadas_masc = models.IntegerField('Vagas desativadas - masculino', null=True, blank=True)
+    vagas_desativadas_fem = models.IntegerField('Vagas desativadas - feminino', null=True, blank=True)
+    #
+    # - 1.4. Gestão do estabelecimento (marcar apenas uma opção)
+    gestao_do_estabelecimento = models.ManyToManyField(GESTAO_ESTABELECIMENTO,
+                                                       verbose_name='Gestão do estabelecimento (marcar apenas uma opção)')
+    #
+    # - 1.5. Quais serviços são terceirizados? (marcar mais de uma resposta, se aplicável)
+    servicos_tercerizados = models.ManyToManyField(SERVICO_EXISTENTE,
+                                                   blank=True,
+                                                   verbose_name='Quais serviços são terceirizados? (marcar mais de uma resposta, se aplicável)')
+    #
+    # - 1.6. Data de inauguração do estabelecimento
+    data_inauguracao = models.DateField('Data de Inauguração da Unidade')
+    #
+    # - 1.7. O estabelecimento foi concebido como estabelecimento penal ou foi construído para outra utilização e foi adaptado?
+    destino_original = models.CharField('O estabelecimento foi concebido como estabelecimento penal ou foi construído para outra utilização e foi adaptado?',
+                                        choices=DESTINACAO_ORIGINAL,
+                                        max_length=100,
+                                        help_text='O estabelecimento foi concebido como estabelecimento penal ou foi construído para outra utilização e foi adaptado?')
+    #
+    # - 1.8. Possui regimento interno?
+    possui_regimento = models.BooleanField(default=True,
+                                           verbose_name='Possui regimento interno?')
+    #
+    # - 1.9. O regimento interno é específico para este estabelecimento ou se aplica aos demais estabelecimentos do Estado?
+    regimento_especifico = models.ForeignKey(REGIMENTO_ESPECIFICO,
+                                             blank=True,
+                                             verbose_name='O regimento interno é específico para este estabelecimento ou se aplica aos demais estabelecimentos do Estado?')
+    #
+    # - 2.1. Há cela adequada/ dormitório para gestantes? (apenas para estabelecimentos com vagas para mulheres)
+    cela_gestantes = models.CharField('Há cela adequada/ dormitório para gestantes? (apenas para estabelecimentos com vagas para mulheres)',
+                                      choices=S_N_NA,
+                                      max_length=100)
+    #
+    # - 2.1.1. Quantidade de gestantes/ parturientes
+    qtd_gestantes = models.IntegerField('Quantidade de gestantes/parturientes')
+    #
+    # - 2.1.2. Quantidade de lactantes
+    qtd_lactantes = models.IntegerField('Quantidade de lactantes')
+    #
+    # - 2.2. Possui berçário e/ou centro de referência materno-infantil? (apenas para estabelecimentos com vagas para mulheres)
+    possui_bercarios = models.CharField('Possui berçário e/ou centro de referência materno-infantil? (apenas para estabelecimentos com vagas para mulheres)',
+                                        choices=S_N_NA,
+                                        max_length=100)
+    # - 2.2.1 - Capacidade de bebês
+    qtd_bebes = models.IntegerField('Capacidade de bebês')
+    #
+    # - 2.3. Possui creche? (apenas para estabelecimentos com vagas para mulheres)
+    possui_creche = models.CharField('Possui creche? (apenas para estabelecimentos com vagas para mulheres)',
+                                     choices=S_N_NA,
+                                     max_length=100)
+    # - 2.3.1 - Capacidade de crianças
+    qtd_criancas = models.IntegerField('Capacidade de crianças')
+
+    class Meta:
+        verbose_name = 'Dados Infopen'
+        verbose_name_plural = 'Dados Infopen'
