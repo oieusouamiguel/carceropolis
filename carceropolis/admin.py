@@ -6,7 +6,7 @@ from django.utils.safestring import mark_safe
 from django.utils.translation import ugettext as _
 from mezzanine.blog.admin import BlogPostAdmin
 from .models import (AreaDeAtuacao, BaseMJ, Especialidade, Especialista,
-                     Publicacao, UnidadePrisional)
+                     Publicacao, UnidadePrisional, DadosInfopen)
 
 
 class EspecialistaAdmin(admin.ModelAdmin):
@@ -88,3 +88,4 @@ admin.site.register(Especialidade)
 admin.site.register(Especialista, EspecialistaAdmin)
 admin.site.register(Publicacao, PublicacaoAdmin)
 admin.site.register(UnidadePrisional, UnidadePrisionalAdmin)
+admin.site.register(DadosInfopen)
