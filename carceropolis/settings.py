@@ -343,6 +343,10 @@ OPTIONAL_APPS = (
     PACKAGE_NAME_GRAPPELLI,
 )
 
+LOCALE_PATHS = (
+    PROJECT_ROOT + '/translations/locale',
+)
+
 #########################
 # CARCEROPOLIS SETTINGS #
 #########################
