@@ -4,3 +4,4 @@ django-autoslug
 django-extensions
 django-shell-plus
 django-phonenumber-field
+bokeh
