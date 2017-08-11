@@ -5,3 +5,4 @@ django-extensions
 django-shell-plus
 django-phonenumber-field
 bokeh
+flexx

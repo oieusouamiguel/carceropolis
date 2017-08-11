@@ -1,6 +1,7 @@
 # coding: utf-8
 from __future__ import unicode_literals
 import json
+import base64
 
 from calendar import month_name
 
@@ -254,9 +255,14 @@ def data_dashboard(request, template="dashboard/dashboard.html"):
     """
     Data dashboard.
     """
-
     script = autoload_server(url='http://localhost:5006/bkapp')
+    if request.GET.urlencode():
+        state = base64.urlsafe_b64encode(request.GET.urlencode().encode()).decode('utf8')
+        mark = 'bokeh-absolute-url'
+        insert = 'state=' + state + '&' + mark
+        script = script.replace(mark, insert)
     context = {"script": script}
+    # context = {"script": ' '.join(script.splitlines()).replace('/script', 'end-script')}
     templates = [template]
 
     return TemplateResponse(request, templates, context)
